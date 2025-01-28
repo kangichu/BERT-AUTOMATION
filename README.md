@@ -236,7 +236,7 @@ project/
 │   └── manual_narrative.py   # Manual narrative logic
 ├── vectorizer/               
 │   └── bert_vectorizer.py    # Embedding generation
-├── database/                 
+├── faiss_handler/                 
 │   └── faiss_store.py        # FAISS index management
 ├── data_handler/             
 │   └── tensorboard_exporter.py  # TensorBoard export

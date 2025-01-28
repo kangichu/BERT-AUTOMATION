@@ -1,3 +1,4 @@
 .env
 /logs
 /faiss_index
+**/__pycache__/

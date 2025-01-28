@@ -1,213 +1,290 @@
+
 ## Comprehensive Documentation for Real Estate Data Pipeline
 
 ### Table of Contents
-1. **Overview**
-2. **Key Concepts**
-3. **Pipeline Steps**
-   - Data Retrieval
-   - Narrative Generation
-   - Embedding Generation
-   - Storage for Search
-   - Visualization
-4. **Code Walkthrough**
-   - File Structure
-   - Main Pipeline (`main.py`)
-   - Supporting Modules
-5. **Logging and Error Handling**
-6. **FAQs and Troubleshooting
+1. Overview  
+2. Key Concepts  
+3. Execution Flow (Detailed Pipeline Steps)  
+   - Data Retrieval  
+   - Narrative Generation  
+   - Embedding Generation  
+   - FAISS Indexing and Storage  
+   - Visualization with TensorBoard  
+   - Updating the FAISS Index with New Listings  
+4. Code Walkthrough  
+   - File Structure  
+   - Function Descriptions  
+5. Logging and Error Handling  
+6. FAQs and Troubleshooting  
 
 ---
 
-### 1. Overview
-This pipeline is designed to process real estate data, transforming raw listings from a MySQL database into insights using advanced NLP techniques and embedding visualizations. The steps include:
+### 1. Overview  
+This real estate data pipeline processes property listings, generates narratives, and indexes them for efficient similarity-based searches. It handles:  
+- Fetching data from a MySQL database.  
+- Generating narratives using AI models or manual logic.  
+- Creating vector embeddings for listings.  
+- Indexing embeddings in FAISS for similarity searches.  
+- Visualizing results in TensorBoard.  
 
-1. **Data Retrieval**: Connect to a database and extract relevant data.
-2. **Narrative Generation**: Use AI models like GPT-2 and BLOOM to create engaging property descriptions.
-3. **Embedding Creation**: Convert narratives into vector representations with BERT.
-4. **Storage**: Index embeddings for fast similarity searches using FAISS.
-5. **Visualization**: Present data interactively in TensorBoard.
-
----
-
-### 2. Key Concepts
-
-#### **Transformers**
-- **Definition**: Neural networks that use attention mechanisms for context-aware processing.
-- **Usage**:
-  - GPT-2: For generating property narratives.
-  - BERT: For embedding text into dense vectors.
-
-#### **Tokenizers**
-- **Definition**: Tools that break text into smaller units, like words or subwords (tokens), which can be understood by transformer models.
-- **Types**:
-  - Word-based: Splits text by spaces.
-  - Subword-based: Splits words into smaller meaningful units.
-- **Example**:
-  - Input: "Real estate listings"
-  - Tokenized Output: ["Real", "estate", "listings"]
-- **Importance**: Tokenizers are essential for preparing raw text so models like GPT-2 and BERT can process it efficiently.
-
-#### **Embeddings**
-- **Definition**: Dense vector representations of text that encode semantic meaning.
-- **Applications**:
-  - Similarity search (e.g., finding properties similar to a query).
-
-#### **FAISS**
-- **Definition**: A high-performance library for similarity search.
-- **Purpose**: Efficiently stores and queries embeddings.
-
-#### **TensorBoard**
-- **Definition**: A visualization tool for ML metrics and embeddings.
-- **Purpose**: Inspect patterns and relationships in the embeddings.
+The pipeline also supports periodic updates for new listings and exposes endpoints via a Flask API for searching and updating.  
 
 ---
 
+### 2. Key Concepts  
 
-### 3. Pipeline Steps
+#### **Transformers**  
+- **Models Used**:  
+  - GPT-2, BLOOM: Generate property descriptions.  
+  - BERT: Convert text into vector embeddings.  
 
-#### **Step 1: Data Retrieval**
-- **What Happens**:
-  - Connects to a MySQL database.
-  - Extracts published listings with a JOIN query to enrich data with complex details.
+#### **FAISS**  
+- **Definition**: A similarity search library that stores and retrieves embeddings efficiently.  
 
-- **Code Snippet**:
+#### **TensorBoard**  
+- **Purpose**: Visualize embeddings and metadata for insights.  
+
+#### **Flask API**  
+- **Endpoints**:  
+  - `/search`: Search for similar properties based on text queries.  
+  - `/update_pipeline`: Add new listings to the FAISS index.  
+
+---
+
+### 3. Execution Flow  
+
+#### **Pipeline Execution Flow in `main.py`**  
+
+The pipeline orchestrates the following steps:  
+
+---
+
+#### **Step 1: Data Retrieval**  
+
+**Description:**  
+Fetches property data from the MySQL database, including related details like amenities and complex information.  
+
+**Key Function:**  
 ```python
-from pymysql import connect
-
 def fetch_data_from_mysql():
+    """
+    Retrieves all published listings and their associated complex details from MySQL.
+    """
     query = """
     SELECT listings.*, complexes.title AS complex_title
     FROM listings
     LEFT JOIN complexes ON listings.complex_id = complexes.id
     WHERE listings.status = 'Published';
     """
+    cursor.execute(query)
     rows = cursor.fetchall()
     return rows
 ```
 
----
-
-#### **Step 2: Narrative Generation**
-- **What Happens**:
-  - Generates narratives using GPT-2, BLOOM, and Llama.
-  - Constructs prompts to guide AI models in producing relevant content.
-
-- **Key Functions**:
-  - `generate_narratives_with_gpt`
-  - `generate_narratives_with_bloom`
-  - `generate_narratives_with_llama`
-
-- **Code Snippet**:
+**Pipeline Code:**  
 ```python
-prompt = f"Create a listing description for {name} in {location} priced at {price}."
-inputs = tokenizer.encode(prompt, return_tensors="pt")
-outputs = model.generate(inputs, max_new_tokens=100)
-narrative = tokenizer.decode(outputs[0], skip_special_tokens=True)
+rows = fetch_data_from_mysql()
+logging.info(f"Retrieved {len(rows)} listings from MySQL.")
 ```
 
 ---
 
-#### **Step 3: Embedding Generation**
-- **What Happens**:
-  - Converts narratives into vector embeddings using BERT.
-  - Applies tokenization and processes text through BERT’s layers.
+#### **Step 2: Narrative Generation**  
 
-- **Code Snippet**:
+**Description:**  
+Generates property descriptions using AI models (GPT-2, BLOOM) or manual logic if preferred.  
+
+**Key Function (Manual):**  
 ```python
-from transformers import AutoTokenizer, AutoModel
-import torch
+def generate_narrative_manually(rows):
+    """
+    Creates property descriptions manually from listing data.
+    """
+    narratives = []
+    for row in rows:
+        narrative = f"{row['name']} is a {row['listing_type']} in {row['county_specific']}."
+        narratives.append((row['id'], narrative))
+    return narratives
+```
 
-tokens = tokenizer(narrative, return_tensors="pt", truncation=True)
-output = model(**tokens)
-embedding = output.last_hidden_state.mean(dim=1).squeeze().numpy()
+**Pipeline Code:**  
+```python
+narratives = generate_narrative_manually(rows)
+logging.info(f"Generated {len(narratives)} property narratives.")
 ```
 
 ---
 
-#### **Step 4: Storage for Search**
-- **What Happens**:
-  - Embeddings are added to a FAISS index for similarity search.
+#### **Step 3: Embedding Generation**  
 
-- **Code Snippet**:
+**Description:**  
+Converts generated narratives into dense vector representations using BERT.  
+
+**Key Function:**  
 ```python
-import faiss
+def generate_embeddings(narratives):
+    """
+    Converts narratives into dense embeddings using BERT.
+    """
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    model = AutoModel.from_pretrained("bert-base-uncased")
+    vector_data = []
+    for id, narrative in narratives:
+        tokens = tokenizer(narrative, return_tensors="pt")
+        output = model(**tokens)
+        embedding = output.last_hidden_state.mean(dim=1).squeeze().numpy()
+        vector_data.append((id, narrative, embedding))
+    return vector_data
+```
 
-manager = FAISSManager(dimension=768)
-manager.add_vectors(vector_data)
-manager.save_index()
+**Pipeline Code:**  
+```python
+vector_data = generate_embeddings(narratives)
+logging.info(f"Generated embeddings for {len(vector_data)} narratives.")
 ```
 
 ---
 
-#### **Step 5: Visualization**
-- **What Happens**:
-  - Embeddings and metadata are exported to TensorBoard.
-  - TensorBoard's projector visualizes embeddings in a reduced-dimensional space.
+#### **Step 4: FAISS Indexing and Storage**  
 
-- **Code Snippet**:
+**Description:**  
+Embeddings are stored in FAISS, enabling efficient similarity searches.  
+
+**Key Function:**  
 ```python
-create_projector_config(
-    log_dir="logs/embedding_logs",
-    embeddings=embeddings,
-    metadata=metadata
+def store_embeddings_in_faiss(vector_data, dimension=768):
+    """
+    Stores vector embeddings in a FAISS index for similarity-based searches.
+    """
+    faiss_manager = FAISSManager(dimension)
+    faiss_manager.add_vectors(vector_data)
+    logging.info(f"Stored {len(vector_data)} embeddings in the FAISS index.")
+```
+
+**Pipeline Code:**  
+```python
+store_embeddings_in_faiss(vector_data)
+logging.info("Embeddings stored in FAISS successfully.")
+```
+
+---
+
+#### **Step 5: Visualization with TensorBoard**  
+
+**Description:**  
+Exports embeddings and metadata for TensorBoard visualization.  
+
+**Key Function:**  
+```python
+def export_to_tensorboard(embeddings, metadata, log_dir="logs/embedding_logs"):
+    """
+    Exports embeddings and metadata to TensorBoard for visualization.
+    """
+    os.makedirs(log_dir, exist_ok=True)
+    np.savetxt(os.path.join(log_dir, "embeddings.tsv"), embeddings, delimiter="\t")
+    with open(os.path.join(log_dir, "metadata.tsv"), "w") as f:
+        f.write("\n".join(metadata))
+    logging.info("Embeddings exported for TensorBoard.")
+```
+
+**Pipeline Code:**  
+```python
+export_to_tensorboard(
+    [item[2] for item in vector_data],
+    [f"ID: {item[0]} | Narrative: {item[1]}" for item in vector_data]
 )
 ```
 
 ---
 
-### 4. Code Walkthrough
+#### **Step 6: Updating the FAISS Index with New Listings**  
 
-#### **File Structure**
+**Description:**  
+Updates the FAISS index by processing only new listings from the database.  
+
+**Key Function:**  
+```python
+def update_pipeline_with_new_listings(index_path):
+    """
+    Fetches new listings and adds their embeddings to the existing FAISS index.
+    """
+    last_processed_id = load_last_processed_id()
+    new_rows, new_last_processed_id = fetch_new_listings_from_mysql(last_processed_id)
+    if new_rows:
+        narratives = generate_narrative_manually(new_rows)
+        vector_data = generate_embeddings(narratives)
+        faiss_manager = FAISSManager()
+        faiss_index = faiss_manager.load_index(index_path)
+        for item in vector_data:
+            faiss_index.add(np.array([item[2]]))
+        faiss_manager.save_index(faiss_index, index_path)
+        save_last_processed_id(new_last_processed_id)
+        logging.info(f"Updated FAISS index with {len(new_rows)} new listings.")
+```
+
+**Pipeline Code:**  
+```python
+update_pipeline_with_new_listings('faiss_index')
+```
+
+---
+
+### 4. Code Walkthrough  
+
+#### **File Structure**  
 ```plaintext
 project/
-│
 ├── main.py                   # Main pipeline orchestration
 ├── data_fetcher/
-│   └── mysql_fetcher.py      # MySQL interactions
+│   ├── mysql_fetcher.py      # Fetch data from MySQL
+│   └── last_processed.py     # Track last processed listing ID
 ├── narrative_generator/
-│   └── gpt_narrative.py      # GPT-2, BLOOM, Llama narrative generation
+│   ├── gpt_narrative.py      # AI-powered narrative generation
+│   └── manual_narrative.py   # Manual narrative logic
 ├── vectorizer/
-│   └── bert_vectorizer.py    # BERT embeddings
+│   └── bert_vectorizer.py    # Embedding generation
 ├── database/
-│   └── faiss_store.py        # FAISS storage
+│   └── faiss_store.py        # FAISS index management
 ├── data_handler/
-│   ├── tensorboard_exporter.py  # TensorBoard export
+│   └── tensorboard_exporter.py  # TensorBoard export
 ├── utils/
 │   └── logger.py             # Logging setup
-├── config.py                 # Database configuration
 └── logs/                     # Log files
 ```
 
 ---
 
-### 5. Logging and Error Handling
+### 5. Logging and Error Handling  
 
-#### **Logging**
-- Logs are stored in the `logs/` directory.
-- Errors are logged with timestamps for debugging.
+**Logging Setup:**  
+```python
+def setup_logging():
+    """
+    Initializes daily rotating logs.
+    """
+    handler = logging.handlers.TimedRotatingFileHandler("logs/pipeline.log", when="midnight")
+    logging.basicConfig(handlers=[handler], level=logging.INFO, format="%(asctime)s - %(message)s")
+    logging.info("Logging initialized.")
+```
 
-#### **Error Handling**
-- Each step uses `try-except` blocks.
-- Example:
+**Error Handling Example:**  
 ```python
 try:
-    data = fetch_data_from_mysql()
+    rows = fetch_data_from_mysql()
 except Exception as e:
-    logging.error(f"Failed to fetch data: {e}")
+    logging.error(f"Error during data retrieval: {e}")
 ```
 
 ---
 
-### 6. FAQs and Troubleshooting
+### 6. FAQs and Troubleshooting  
 
-**Q: Why is TensorBoard not showing data?**
-- Ensure the `projector_config.pbtxt` and `.tsv` files are correctly exported.
+**Q: How do I handle new listings?**  
+- Use `update_pipeline_with_new_listings('faiss_index')`.  
 
-**Q: How do I add new models?**
-- Extend `narrative_generator.py` with new functions for loading and using other models.
+**Q: Why are embeddings not visible in TensorBoard?**  
+- Ensure embeddings and metadata are exported to `logs/embedding_logs`.  
 
-**Q: Can I use cloud-hosted FAISS?**
-- Yes, by integrating FAISS with a database like Redis or Milvus.
-
----
+**Q: How do I add new models?**  
+- Extend the `narrative_generator` module to integrate new AI models.  
 

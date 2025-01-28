@@ -241,7 +241,7 @@ project/
 ├── data_handler/             
 │   └── tensorboard_exporter.py  # TensorBoard export
 ├── logs/                     # Log files
-└── faiss_index/              # FAISS Index FIles
+└── faiss_index/              # FAISS Index Files
 ```
 
 ---

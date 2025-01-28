@@ -11,7 +11,7 @@ from data_fetcher.mysql_fetcher import fetch_data_from_mysql, fetch_new_listings
 from data_fetcher.last_processed import load_last_processed_id, save_last_processed_id
 from narrative_generator.gpt_narrative import generate_narrative_manually, generate_response_with_gpt
 from vectorizer.bert_vectorizer import generate_embeddings, generate_single_embedding
-from database.faiss_store import store_embeddings_in_faiss, FAISSManager
+from faiss_handler.faiss_store import store_embeddings_in_faiss, FAISSManager
 from data_handler.tensorboard_exporter import create_projector_config
 from data_handler.tensorboard_exporter import export_to_tensorboard
 from utils.logger import setup_logging

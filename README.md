@@ -272,4 +272,7 @@ A: Verify that embeddings are exported to `logs/embedding_logs`.
 Q: **How do I add new models?**  
 A: Extend the `narrative_generator` module with additional AI models.
 
+Q: **How do i add embeddings after generation into TensorBoard?**
+A: Run the command `tensorboard --logdir=logs/embedding_logs --reload_interval=1`
+
 ---

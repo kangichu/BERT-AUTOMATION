@@ -227,6 +227,7 @@ update_pipeline_with_new_listings('faiss_index')
 ```
 project/
 ├── main.py                   # Main pipeline orchestration
+├── config.py                 # Connection Details to MySQL Database
 ├── data_fetcher/             
 │   ├── mysql_fetcher.py      # Fetch data from MySQL
 │   └── last_processed.py     # Track last processed listing ID
@@ -239,7 +240,8 @@ project/
 │   └── faiss_store.py        # FAISS index management
 ├── data_handler/             
 │   └── tensorboard_exporter.py  # TensorBoard export
-└── logs/                     # Log files
+├── logs/                     # Log files
+└── faiss_index/              # FAISS Index FIles
 ```
 
 ---

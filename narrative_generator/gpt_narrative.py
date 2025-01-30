@@ -2,6 +2,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from huggingface_hub import login
 import torch
 import logging
+import numpy as np
 
 def generate_narratives_with_gpt(rows):
     try:
@@ -340,12 +341,34 @@ def generate_narrative_manually(rows):
     return narratives
 
 def generate_response_with_gpt(query, narratives):
-    # Here we're using a simple concatenation of narratives for context, which might need refinement
-    context = " ".join(narratives)
-    prompt = f"Based on the following property listings:\n{context}\n\nAnswer the query: {query}"
+    try:
+        # Ensure all items in narratives are converted to strings
+        string_narratives = [str(narrative) for narrative in narratives if isinstance(narrative, (str, np.str_))]
+        
+        # Log if no valid narratives are found
+        if not string_narratives:
+            logging.warning("No valid narratives found for the query.")
+            raise ValueError("No valid narratives found.")
+        
+        # Join the valid narratives into a context string
+        context = " ".join(string_narratives)
+        logging.info(f"Generated context for GPT: {context[:200]}... (truncated)")  # Log first 200 characters of context
+
+        # Create the prompt with context and user query
+        prompt = f"Based on the following property listings:\n{context}\n\nAnswer the query: {query}"
+
+        # Use the GPT-2 model to generate a response (you can replace 'gpt2' with a more suitable model if needed)
+        logging.info(f"Generating response with GPT for query: {query}")
+        generator = pipeline('text-generation', model='gpt2')
+        generated_text = generator(prompt, max_length=200, num_return_sequences=1)[0]['generated_text']
+        
+        # Clean up the response by removing the prompt from the generated text
+        response = generated_text.split(prompt)[-1].strip()
+        
+        logging.info(f"Generated response: {response[:100]}... (truncated)")  # Log the first 100 characters of the response
+
+        return response
     
-    generator = pipeline('text-generation', model='gpt2')
-    response = generator(prompt, max_length=200, num_return_sequences=1)[0]['generated_text']
-    
-    # Clean up the response by removing the prompt
-    return response.split(prompt)[-1].strip()
+    except Exception as e:
+        logging.error(f"Generate response failed: {e}")
+        raise

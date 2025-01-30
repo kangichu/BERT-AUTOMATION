@@ -1,3 +1,9 @@
+NOTE
+
+This has alot of issues, have to start again, will create another project though the saving works
+
+
+
 ## Comprehensive Documentation for Real Estate Data Pipeline
 
 ### Table of Contents

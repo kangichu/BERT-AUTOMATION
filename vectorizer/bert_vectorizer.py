@@ -2,6 +2,7 @@ from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 import torch
 import logging
+import numpy as np
 
 def generate_embeddings(narratives):
     try:
@@ -23,5 +24,11 @@ def generate_embeddings(narratives):
         raise
 
 def generate_single_embedding(text):
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    return model.encode(text).tolist()
+    # Use BERT for consistency
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    model = AutoModel.from_pretrained("bert-base-uncased")
+    tokens = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    with torch.no_grad():
+        output = model(**tokens)
+    embedding = output.last_hidden_state.mean(dim=1).squeeze().numpy()
+    return embedding.tolist()

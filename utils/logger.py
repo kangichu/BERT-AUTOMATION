@@ -26,41 +26,41 @@ def zip_old_logs(log_file):
         print(f"Error zipping log file {log_file}: {e}")
 
 def setup_logging():
-    # Log file path, based on current date
-    log_filename = os.path.join(log_dir, datetime.now().strftime('%Y-%m-%d') + ".log")
-    
-    # Create a TimedRotatingFileHandler to log daily and keep 7 previous logs
-    handler = logging.handlers.TimedRotatingFileHandler(
-        log_filename,
-        when='midnight',  # Log file rotates at midnight
-        interval=1,  # Every day
-        backupCount=7,  # Keep the last 7 days' worth of logs
-        encoding='utf-8'
-    )
-    
-    # Set up the logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    if not logging.getLogger().hasHandlers():
+        # Log file path, based on current date
+        log_filename = os.path.join(log_dir, datetime.now().strftime('%Y-%m-%d') + ".log")
+        
+        # Create a TimedRotatingFileHandler to log daily and keep 7 previous logs
+        handler = logging.handlers.TimedRotatingFileHandler(
+            log_filename,
+            when='midnight',  # Log file rotates at midnight
+            interval=1,  # Every day
+            backupCount=7,  # Keep the last 7 days' worth of logs
+            encoding='utf-8'
+        )
+        
+        # Set up the logger
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    # Zip previous day's log if it's the first log of the new day
-    log_file_to_zip = os.path.join(log_dir, f"{(datetime.now().day - 1) % 31}.log")
-    zip_old_logs(log_file_to_zip)
+        # Zip previous day's log if it's the first log of the new day
+        log_file_to_zip = os.path.join(log_dir, f"{(datetime.now().day - 1) % 31}.log")
+        zip_old_logs(log_file_to_zip)
 
-    # Optionally, log to the console as well (you can remove this if not needed)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+        # Optionally, log to the console as well (you can remove this if not needed)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
-    # Test logging
-    logger.info("Logging system is set up.")
-    return logger
+        # Test logging
+        logger.info("Logging system is set up.")
+        return logger
+    else:
+        print("Logging handlers already set up.")
 
+        
 # Initialize logging
 logger = setup_logging()
-
-# Log some test messages
-logger.info("This is an info log.")
-logger.error("This is an error log.")
